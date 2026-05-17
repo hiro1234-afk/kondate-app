@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1週間の献立アプリ</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+      background: #f5f0eb;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #e8704a, #c94c4c);
+      color: white;
+      padding: 24px 20px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    header h1 { font-size: 1.8rem; letter-spacing: 0.05em; }
+    header p { font-size: 0.9rem; opacity: 0.85; margin-top: 4px; }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      padding: 20px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 24px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #e8704a;
+      color: white;
+      box-shadow: 0 2px 6px rgba(232,112,74,0.4);
+    }
+    .btn-primary:hover { background: #d05e39; transform: translateY(-1px); }
+
+    .btn-secondary {
+      background: white;
+      color: #555;
+      border: 1px solid #ddd;
+    }
+    .btn-secondary:hover { background: #f0f0f0; }
+
+    .main-grid {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 16px 40px;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    /* --- 献立カード --- */
+    .week-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+    }
+
+    .day-card {
+      background: white;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .day-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+
+    .day-header {
+      padding: 10px 14px;
+      font-weight: bold;
+      font-size: 0.95rem;
+      color: white;
+    }
+
+    .day-0 .day-header { background: #e57373; }
+    .day-1 .day-header { background: #64b5f6; }
+    .day-2 .day-header { background: #81c784; }
+    .day-3 .day-header { background: #ffb74d; }
+    .day-4 .day-header { background: #ba68c8; }
+    .day-5 .day-header { background: #4db6ac; }
+    .day-6 .day-header { background: #f06292; }
+
+    .meal-body { padding: 14px; }
+
+    .meal-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #333;
+      line-height: 1.4;
+    }
+
+    .meal-kcal {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 0.78rem;
+      color: #e8704a;
+      background: #fff3ee;
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-weight: 600;
+    }
+
+    .meal-ingredients {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: #777;
+      line-height: 1.6;
+    }
+
+    /* --- 材料リスト --- */
+    .sidebar { position: sticky; top: 16px; align-self: start; }
+
+    .ingredients-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .ingredients-card h2 {
+      background: linear-gradient(135deg, #e8704a, #c94c4c);
+      color: white;
+      padding: 14px 16px;
+      font-size: 1rem;
+    }
+
+    .category-section { padding: 4px 0; }
+
+    .category-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px 4px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .ingredient-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 16px;
+      border-bottom: 1px solid #f5f5f5;
+      font-size: 0.88rem;
+    }
+    .ingredient-row:last-child { border-bottom: none; }
+
+    .ingredient-name { color: #333; }
+    .ingredient-qty {
+      color: #e8704a;
+      font-weight: 600;
+      font-size: 0.82rem;
+      white-space: nowrap;
+      margin-left: 8px;
+    }
+
+    .print-note {
+      text-align: center;
+      padding: 10px 16px 14px;
+      font-size: 0.78rem;
+      color: #bbb;
+    }
+
+    /* 栄養サマリー */
+    .nutrition-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 0 16px 12px;
+    }
+    .nut-chip {
+      background: #fff3ee;
+      color: #e8704a;
+      border-radius: 12px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .day-card { cursor: pointer; }
+    .recipe-hint {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: #e8704a;
+      border: 1px solid #e8704a;
+      border-radius: 10px;
+      padding: 2px 8px;
+    }
+
+    /* --- モーダル --- */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: white;
+      border-radius: 16px;
+      max-width: 520px;
+      width: 100%;
+      max-height: 88vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      animation: popIn 0.18s ease;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.92); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+
+    .modal-header {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .modal-title { font-size: 1.2rem; font-weight: 700; color: #333; }
+    .modal-kcal {
+      font-size: 0.78rem;
+      color: #e8704a;
+      background: #fff3ee;
+      border-radius: 10px;
+      padding: 3px 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      color: #aaa;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .modal-close:hover { color: #555; }
+
+    .modal-section { padding: 14px 20px; border-bottom: 1px solid #f5f5f5; }
+    .modal-section:last-child { border-bottom: none; }
+    .modal-section-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #aaa;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+
+    .ing-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .ing-table tr { border-bottom: 1px solid #f5f5f5; }
+    .ing-table tr:last-child { border-bottom: none; }
+    .ing-table td { padding: 5px 4px; }
+    .ing-table td:last-child { text-align: right; color: #e8704a; font-weight: 600; }
+
+    .steps-list { list-style: none; }
+    .steps-list li {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    .steps-list li:last-child { margin-bottom: 0; }
+    .step-num {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #e8704a;
+      color: white;
+      font-size: 0.72rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+
+    @media print {
+      header { background: #333 !important; }
+      .controls { display: none; }
+      .main-grid { grid-template-columns: 1fr 280px; }
+      .sidebar { position: static; }
+      .modal-overlay { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🍱 1週間の献立</h1>
+  <p id="week-label"></p>
+</header>
+
+<div class="controls">
+  <button class="btn-primary" onclick="generatePlan()">🔄 新しい献立を作成</button>
+  <button class="btn-secondary" onclick="window.print()">🖨 印刷する</button>
+</div>
+
+<!-- モーダル -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-title"></div>
+        <span class="modal-kcal" id="modal-kcal"></span>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">🛒 材料（1人分）</div>
+      <table class="ing-table" id="modal-ing"></table>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">👨‍🍳 作り方</div>
+      <ol class="steps-list" id="modal-steps"></ol>
+    </div>
+  </div>
+</div>
+
+<div class="main-grid">
+  <div>
+    <div class="week-grid" id="week-grid"></div>
+  </div>
+  <aside class="sidebar">
+    <div class="ingredients-card">
+      <h2>🛒 1週間の買い物リスト</h2>
+      <div id="ingredients-list"></div>
+      <div class="print-note">※ 家にある調味料・基本食材は除いています</div>
+    </div>
+  </aside>
+</div>
+
+<script>
+const DAYS = ['月', '火', '水', '木', '金', '土', '日'];
+const DAY_INDEX = { '月': 1, '火': 2, '水': 3, '木': 4, '金': 5, '土': 6, '日': 0 };
+
+// 夕食レシピデータベース
+const dinners = [
+  {
+    name: '肉じゃが', kcal: 560,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '牛薄切り肉': { qty: 120, unit: 'g', cat: '肉・卵' }, 'じゃがいも': { qty: 2, unit: '個', cat: '野菜・海藻' }, '玉ねぎ': { qty: 0.5, unit: '個', cat: '野菜・海藻' }, 'にんじん': { qty: 0.5, unit: '本', cat: '野菜・海藻' } },
+    steps: ['じゃがいもは一口大、玉ねぎはくし切り、にんじんは乱切りにする。', '鍋に油を熱し、牛肉を炒める。色が変わったら野菜を加えてさらに炒める。', '水200ml・醤油大さじ2・みりん大さじ2・砂糖大さじ1を加え、落し蓋をして中火で15分煮る。', '煮汁が少なくなったら火を止め、味を整えてご飯と一緒に盛り付ける。']
+  },
+  {
+    name: 'すき焼き', kcal: 720,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '牛薄切り肉': { qty: 150, unit: 'g', cat: '肉・卵' }, '豆腐': { qty: 0.5, unit: '丁', cat: '大豆製品' }, 'しらたき': { qty: 100, unit: 'g', cat: '野菜・海藻' }, '長ネギ': { qty: 0.5, unit: '本', cat: '野菜・海藻' }, '卵': { qty: 2, unit: '個', cat: '肉・卵' } },
+    steps: ['長ネギは斜め切り、豆腐は一口大に切る。しらたきは下茹でしておく。', '割り下（醤油・みりん・酒・砂糖 各大さじ2）を合わせておく。', '鍋を熱して牛脂を溶かし、牛肉を広げて焼く。割り下を加える。', '野菜・豆腐・しらたきを加えて煮る。溶き卵にくぐらせてご飯と一緒に食べる。']
+  },
+  {
+    name: '豚のしょうが焼き', kcal: 620,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '豚ロース肉': { qty: 150, unit: 'g', cat: '肉・卵' }, 'キャベツ': { qty: 150, unit: 'g', cat: '野菜・海藻' }, 'しょうが': { qty: 10, unit: 'g', cat: '乳製品・調味料' } },
+    steps: ['豚ロース肉は筋切りをしておく。キャベツは千切りにする。', 'タレ（醤油・みりん・酒 各大さじ1・すりおろしたしょうが）を合わせる。', 'フライパンに油を熱し、豚肉を強火で両面焼く。', 'タレを加えて肉に絡め、照りが出たら完成。キャベツと一緒にご飯に添える。']
+  },
+  {
+    name: '麻婆豆腐', kcal: 590,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '豆腐': { qty: 1, unit: '丁', cat: '大豆製品' }, '合いびき肉': { qty: 100, unit: 'g', cat: '肉・卵' }, '長ネギ': { qty: 0.5, unit: '本', cat: '野菜・海藻' }, '豆板醤': { qty: 15, unit: 'g', cat: '乳製品・調味料' } },
+    steps: ['豆腐は1.5cm角に切り、熱湯で1分茹でて水気を切る。長ネギはみじん切りにする。', 'フライパンにごま油を熱し、豆板醤を炒めて香りを出す。', 'ひき肉と長ネギを加えて炒め、鶏がらスープ150ml・醤油・みりん各大さじ1を加える。', '豆腐を加えて2分煮たら、水溶き片栗粉でとろみをつけてご飯に盛る。']
+  },
+  {
+    name: '唐揚げ定食', kcal: 750,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '鶏もも肉': { qty: 200, unit: 'g', cat: '肉・卵' }, 'キャベツ': { qty: 100, unit: 'g', cat: '野菜・海藻' }, 'レモン': { qty: 0.5, unit: '個', cat: '野菜・海藻' } },
+    steps: ['鶏もも肉は一口大に切り、醤油・酒各大さじ1、すりおろしにんにく・しょうが少々で15分漬ける。', 'キャベツは千切りにして水にさらし、パリッとさせる。', '漬け汁を軽く拭き取り、片栗粉をまぶして170℃の油で4分揚げる。', '油を190℃に上げて1分二度揚げし、カラッとさせる。レモンを添えて盛り付ける。']
+  },
+  {
+    name: 'ハンバーグ', kcal: 680,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '合いびき肉': { qty: 180, unit: 'g', cat: '肉・卵' }, '玉ねぎ': { qty: 0.5, unit: '個', cat: '野菜・海藻' }, 'パン粉': { qty: 20, unit: 'g', cat: '主食' }, '卵': { qty: 1, unit: '個', cat: '肉・卵' } },
+    steps: ['玉ねぎをみじん切りにし、油で炒めて冷ます。', 'ひき肉・炒め玉ねぎ・パン粉・卵・塩コショウをよく混ぜ、小判形に成形する。中央を少しへこませる。', 'フライパンに油を熱し、中火で両面に焼き色をつける。蓋をして弱火で8分蒸し焼きにする。', '肉汁が透明になったら完成。ソース（ケチャップ・ウスターソース）をかけてご飯と盛り付ける。']
+  },
+  {
+    name: '豚の角煮', kcal: 650,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '豚バラ肉（塊）': { qty: 200, unit: 'g', cat: '肉・卵' }, 'しょうが': { qty: 10, unit: 'g', cat: '乳製品・調味料' }, '長ネギ': { qty: 0.5, unit: '本', cat: '野菜・海藻' }, 'ゆで卵': { qty: 2, unit: '個', cat: '肉・卵' } },
+    steps: ['豚バラ肉を大きめに切り、フライパンで全面に焼き色をつける。', '鍋に肉・水・長ネギの青い部分・しょうがを入れ、沸騰後アクを取り1時間弱火で下茹でする。', '茹で汁を捨て、醤油・みりん・酒・砂糖 各大さじ2を加えて落し蓋をし30分煮る。', 'ゆで卵を加えてさらに10分煮て味を含ませる。ご飯と一緒に盛り付ける。']
+  },
+  {
+    name: '鶏鍋', kcal: 500,
+    ingredients: { '鶏もも肉': { qty: 200, unit: 'g', cat: '肉・卵' }, '豆腐': { qty: 0.5, unit: '丁', cat: '大豆製品' }, '白菜': { qty: 200, unit: 'g', cat: '野菜・海藻' }, 'しめじ': { qty: 80, unit: 'g', cat: '野菜・海藻' }, '長ネギ': { qty: 0.5, unit: '本', cat: '野菜・海藻' } },
+    steps: ['白菜はざく切り、長ネギは斜め切り、豆腐は一口大に切る。しめじはほぐす。', '鍋に水600ml・和風だし（顆粒小さじ1）・酒大さじ2・薄口醤油大さじ1を入れて火にかける。', '沸騰したら鶏もも肉を入れてアクを取り、白菜・長ネギを加える。', '野菜が柔らかくなったら豆腐としめじを加え、5分煮て完成。ポン酢でいただく。']
+  },
+  {
+    name: 'チキンカレー', kcal: 680,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '鶏もも肉': { qty: 150, unit: 'g', cat: '肉・卵' }, 'じゃがいも': { qty: 1, unit: '個', cat: '野菜・海藻' }, '玉ねぎ': { qty: 0.5, unit: '個', cat: '野菜・海藻' }, 'にんじん': { qty: 0.5, unit: '本', cat: '野菜・海藻' }, 'カレールー': { qty: 50, unit: 'g', cat: '乳製品・調味料' } },
+    steps: ['鶏もも肉は一口大、じゃがいも・にんじんは乱切り、玉ねぎはくし切りにする。', '鍋に油を熱し、玉ねぎをあめ色になるまで炒める。鶏肉を加えて表面を焼く。', '野菜を加えて炒め、水450mlを注ぎ沸騰後アクを取り15分煮る。', '火を止めてカレールーを割り入れて溶かし、弱火で5分煮てご飯にかける。']
+  },
+  {
+    name: '回鍋肉（ホイコーロー）', kcal: 600,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '豚バラ肉': { qty: 150, unit: 'g', cat: '肉・卵' }, 'キャベツ': { qty: 200, unit: 'g', cat: '野菜・海藻' }, 'ピーマン': { qty: 2, unit: '個', cat: '野菜・海藻' }, '豆板醤': { qty: 10, unit: 'g', cat: '乳製品・調味料' } },
+    steps: ['豚バラ肉は4cm幅に切る。キャベツはざく切り、ピーマンは乱切りにする。', 'タレ（甜麺醤大さじ1・豆板醤小さじ1・醤油・みりん各大さじ1）を合わせる。', 'フライパンに油を熱し、豚肉を炒めて脂が出てきたらキャベツとピーマンを加える。', '野菜がしんなりしたらタレを加えて強火で手早く炒め合わせ、ご飯と盛り付ける。']
+  },
+  {
+    name: 'ビーフシチュー', kcal: 700,
+    ingredients: { 'パン': { qty: 2, unit: '枚', cat: '主食' }, '牛スネ肉': { qty: 200, unit: 'g', cat: '肉・卵' }, 'じゃがいも': { qty: 2, unit: '個', cat: '野菜・海藻' }, '玉ねぎ': { qty: 1, unit: '個', cat: '野菜・海藻' }, 'にんじん': { qty: 1, unit: '本', cat: '野菜・海藻' }, 'デミグラスソース缶': { qty: 1, unit: '缶', cat: '乳製品・調味料' } },
+    steps: ['牛スネ肉は大きめに切り、塩コショウ。フライパンで全面に焼き色をつける。', '玉ねぎは薄切り、にんじん・じゃがいもは乱切りにする。', '鍋に牛肉・野菜・水500mlを入れて煮立て、アクを取り弱火で1時間煮込む。', 'デミグラスソースを加えてさらに20分煮る。塩コショウで味を整め、パンと一緒に盛り付ける。']
+  },
+  {
+    name: '餃子定食', kcal: 640,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '豚ひき肉': { qty: 150, unit: 'g', cat: '肉・卵' }, '餃子の皮': { qty: 20, unit: '枚', cat: '主食' }, 'キャベツ': { qty: 100, unit: 'g', cat: '野菜・海藻' }, 'にら': { qty: 50, unit: 'g', cat: '野菜・海藻' }, 'しょうが': { qty: 5, unit: 'g', cat: '乳製品・調味料' } },
+    steps: ['キャベツ・にらをみじん切りにし、塩でもんで水気を絞る。', 'ひき肉・野菜・すりおろしたしょうが・醤油大さじ1・ごま油小さじ1をよく混ぜる。', '餃子の皮にタネをのせ、ひだを作りながら包む。', 'フライパンに油を熱して餃子を並べ焼き色をつけ、熱湯を入れて蓋をして5分蒸し焼き。水気が飛んだらごま油を回しかけてカリッとさせる。']
+  },
+  {
+    name: '豚汁定食', kcal: 520,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '豚バラ肉': { qty: 100, unit: 'g', cat: '肉・卵' }, 'じゃがいも': { qty: 1, unit: '個', cat: '野菜・海藻' }, '大根': { qty: 80, unit: 'g', cat: '野菜・海藻' }, 'にんじん': { qty: 0.5, unit: '本', cat: '野菜・海藻' }, 'こんにゃく': { qty: 100, unit: 'g', cat: '野菜・海藻' } },
+    steps: ['豚バラ肉は3cm幅に切る。大根・にんじんはいちょう切り、じゃがいもは一口大、こんにゃくはちぎる。', '鍋にごま油を熱し、豚肉を炒める。野菜・こんにゃくを加えてさらに炒める。', '水600mlを加えて煮立て、アクを取り野菜が柔らかくなるまで15分煮る。', '火を弱め、味噌を溶き入れて完成。ご飯と一緒に盛り付ける。']
+  },
+  {
+    name: '親子丼', kcal: 620,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '鶏もも肉': { qty: 120, unit: 'g', cat: '肉・卵' }, '卵': { qty: 2, unit: '個', cat: '肉・卵' }, '玉ねぎ': { qty: 0.5, unit: '個', cat: '野菜・海藻' } },
+    steps: ['鶏もも肉は一口大に切る。玉ねぎは薄切りにする。卵は溶いておく。', '小鍋にだし150ml・醤油大さじ1.5・みりん大さじ1.5を入れて火にかける。', '玉ねぎを入れて2分煮たら鶏肉を加え、火が通るまで5分煮る。', '溶き卵を2回に分けて回しかけ、半熟になったら火を止めてご飯にのせる。']
+  },
+  {
+    name: 'オムライス', kcal: 660,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '卵': { qty: 3, unit: '個', cat: '肉・卵' }, '鶏むね肉': { qty: 100, unit: 'g', cat: '肉・卵' }, '玉ねぎ': { qty: 0.5, unit: '個', cat: '野菜・海藻' }, 'ピーマン': { qty: 1, unit: '個', cat: '野菜・海藻' }, 'ケチャップ': { qty: 30, unit: 'g', cat: '乳製品・調味料' } },
+    steps: ['鶏むね肉・玉ねぎ・ピーマンを細かく切る。', 'フライパンに油を熱し、鶏肉・玉ねぎ・ピーマンを炒め、ご飯を加えてケチャップで味付けしてチキンライスを作る。', '別のフライパンに油を熱し、溶き卵（塩少々）を流し入れ、半熟になったらチキンライスをのせて包む。', '皿に盛り、ケチャップをかけて完成。']
+  },
+  {
+    name: '野菜たっぷり炒め定食', kcal: 540,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '豚こま肉': { qty: 120, unit: 'g', cat: '肉・卵' }, 'もやし': { qty: 150, unit: 'g', cat: '野菜・海藻' }, 'ピーマン': { qty: 2, unit: '個', cat: '野菜・海藻' }, 'にんじん': { qty: 0.5, unit: '本', cat: '野菜・海藻' }, 'キャベツ': { qty: 100, unit: 'g', cat: '野菜・海藻' } },
+    steps: ['にんじんは細切り、ピーマンは乱切り、キャベツはざく切りにする。', 'フライパンに油を熱し、豚こま肉を炒めて塩コショウする。','にんじん・キャベツ・ピーマン・もやしの順に加えて強火で炒める。', '醤油大さじ1・オイスターソース大さじ1で味付けし、仕上げにごま油を回しかけてご飯と盛る。']
+  },
+  {
+    name: 'ポトフ', kcal: 480,
+    ingredients: { 'パン': { qty: 2, unit: '枚', cat: '主食' }, '鶏もも肉': { qty: 150, unit: 'g', cat: '肉・卵' }, 'じゃがいも': { qty: 2, unit: '個', cat: '野菜・海藻' }, '玉ねぎ': { qty: 1, unit: '個', cat: '野菜・海藻' }, 'にんじん': { qty: 1, unit: '本', cat: '野菜・海藻' }, 'キャベツ': { qty: 150, unit: 'g', cat: '野菜・海藻' } },
+    steps: ['鶏もも肉は大きめに切る。玉ねぎは4等分、にんじん・じゃがいもは大きめの乱切り、キャベツはくし切りにする。', '鍋に水800ml・コンソメ2個・鶏肉・にんじん・玉ねぎを入れて火にかける。', '沸騰後アクを取り、弱火で15分煮る。じゃがいも・キャベツを加えてさらに15分煮る。', '塩コショウで味を整え、器に盛ってパンと一緒に食べる。']
+  },
+  {
+    name: '豚しゃぶサラダ', kcal: 450,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '豚ロース薄切り': { qty: 150, unit: 'g', cat: '肉・卵' }, 'レタス': { qty: 100, unit: 'g', cat: '野菜・海藻' }, 'きゅうり': { qty: 1, unit: '本', cat: '野菜・海藻' }, 'トマト': { qty: 1, unit: '個', cat: '野菜・海藻' } },
+    steps: ['レタスは食べやすくちぎり、きゅうりは薄切り、トマトはくし切りにして皿に盛る。', '鍋に湯を沸かし、酒大さじ1を加える。豚肉を1枚ずつさっとゆでて冷水で締める。', '水気を切った豚肉を野菜の上に盛り付ける。', 'タレ（ポン酢大さじ2・ごま油小さじ1・すりごま少々）をかけてご飯と一緒に食べる。']
+  },
+  {
+    name: 'チキンソテー（トマトソース）', kcal: 610,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '鶏むね肉': { qty: 200, unit: 'g', cat: '肉・卵' }, 'トマト缶': { qty: 0.5, unit: '缶', cat: '野菜・海藻' }, '玉ねぎ': { qty: 0.5, unit: '個', cat: '野菜・海藻' }, 'にんにく': { qty: 1, unit: '片', cat: '野菜・海藻' } },
+    steps: ['鶏むね肉はそぎ切りにして塩コショウ。玉ねぎは薄切り、にんにくはみじん切りにする。', 'フライパンにオリーブ油を熱し、にんにくを炒めて香りを出す。鶏肉を両面こんがり焼いて取り出す。', '同じフライパンで玉ねぎを炒め、トマト缶・塩コショウ・砂糖少々を加えて5分煮詰める。', '鶏肉を戻し入れてソースと絡め、ご飯に盛り付ける。']
+  },
+  {
+    name: '豆腐ステーキ＆そぼろあん', kcal: 430,
+    ingredients: { '米': { qty: 0.5, unit: '合', cat: '主食' }, '豆腐': { qty: 1, unit: '丁', cat: '大豆製品' }, '鶏ひき肉': { qty: 100, unit: 'g', cat: '肉・卵' }, '長ネギ': { qty: 0.5, unit: '本', cat: '野菜・海藻' }, 'しょうが': { qty: 5, unit: 'g', cat: '乳製品・調味料' } },
+    steps: ['豆腐はキッチンペーパーで包み30分水切りする。長ネギはみじん切りにする。', 'フライパンに油を熱し、豆腐を両面こんがり焼いて皿に取り出す。', '同じフライパンでひき肉を炒め、長ネギ・しょうがを加える。だし150ml・醤油大さじ1・みりん大さじ1を加えて煮立てる。', '水溶き片栗粉でとろみをつけ、豆腐の上にかけてご飯と一緒に盛り付ける。']
+  },
+];
+
+let currentPlan = [];
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function generatePlan() {
+  const shuffled = shuffle(dinners);
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  // 月曜始まりで今週の日付を生成
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
+
+  currentPlan = DAYS.map((day, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return {
+      dayLabel: day,
+      dayIndex: DAY_INDEX[day],
+      date: d,
+      dinner: shuffled[i % shuffled.length],
+    };
+  });
+
+  renderWeek();
+  renderIngredients();
+  updateWeekLabel();
+}
+
+function updateWeekLabel() {
+  if (currentPlan.length === 0) return;
+  const start = currentPlan[0].date;
+  const end = currentPlan[6].date;
+  const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+  document.getElementById('week-label').textContent =
+    `${start.getFullYear()}年 ${fmt(start)} 〜 ${fmt(end)}`;
+}
+
+function renderWeek() {
+  const grid = document.getElementById('week-grid');
+  grid.innerHTML = '';
+
+  currentPlan.forEach((day, i) => {
+    const card = document.createElement('div');
+    card.className = `day-card day-${day.dayIndex}`;
+    const dateStr = `${day.date.getMonth()+1}/${day.date.getDate()}`;
+    const ingList = Object.keys(day.dinner.ingredients).join('・');
+    card.innerHTML = `
+      <div class="day-header">${day.dayLabel}曜日 <span style="font-weight:normal;font-size:0.8em">(${dateStr})</span></div>
+      <div class="meal-body">
+        <div class="meal-name">${day.dinner.name}</div>
+        <span class="meal-kcal">${day.dinner.kcal} kcal</span>
+        <div class="meal-ingredients">${ingList}</div>
+        <span class="recipe-hint">📖 作り方を見る</span>
+      </div>
+    `;
+    card.addEventListener('click', () => showRecipe(i));
+    grid.appendChild(card);
+  });
+}
+
+function showRecipe(dayIndex) {
+  const meal = currentPlan[dayIndex].dinner;
+
+  document.getElementById('modal-title').textContent = meal.name;
+  document.getElementById('modal-kcal').textContent = `${meal.kcal} kcal`;
+
+  const ingRows = Object.entries(meal.ingredients).map(([name, info]) => {
+    const qty = Number.isInteger(info.qty) ? info.qty : Math.round(info.qty * 10) / 10;
+    return `<tr><td>${name}</td><td>${qty} ${info.unit}</td></tr>`;
+  }).join('');
+  document.getElementById('modal-ing').innerHTML = ingRows;
+
+  const stepItems = meal.steps.map((s, i) => `
+    <li><span class="step-num">${i+1}</span><span>${s}</span></li>
+  `).join('');
+  document.getElementById('modal-steps').innerHTML = stepItems;
+
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function renderIngredients() {
+  const totals = {};
+  currentPlan.forEach(day => {
+    Object.entries(day.dinner.ingredients).forEach(([name, info]) => {
+      if (!totals[name]) totals[name] = { qty: 0, unit: info.unit, cat: info.cat };
+      totals[name].qty += info.qty;
+    });
+  });
+
+  const catOrder = ['主食', '肉・卵', '野菜・海藻', '大豆製品', '乳製品・調味料'];
+  const catIcons = { '主食': '🍚', '肉・卵': '🥩', '野菜・海藻': '🥦', '大豆製品': '🫘', '乳製品・調味料': '🧂' };
+  const byCategory = {};
+  catOrder.forEach(c => byCategory[c] = []);
+
+  Object.entries(totals).forEach(([name, info]) => {
+    const cat = info.cat || '乳製品・調味料';
+    if (byCategory[cat]) byCategory[cat].push({ name, qty: info.qty, unit: info.unit });
+  });
+
+  const totalKcal = currentPlan.reduce((sum, day) => sum + day.dinner.kcal, 0);
+  const avgKcal = Math.round(totalKcal / 7);
+
+  let html = `
+    <div class="nutrition-bar">
+      <span class="nut-chip">週計 ${totalKcal.toLocaleString()} kcal</span>
+      <span class="nut-chip">1日平均 ${avgKcal} kcal</span>
+    </div>
+  `;
+
+  catOrder.forEach(cat => {
+    const items = byCategory[cat];
+    if (items.length === 0) return;
+    html += `<div class="category-section">`;
+    html += `<div class="category-title">${catIcons[cat]} ${cat}</div>`;
+    items.sort((a,b) => a.name.localeCompare(b.name, 'ja')).forEach(item => {
+      const qty = Number.isInteger(item.qty) ? item.qty : Math.round(item.qty * 10) / 10;
+      html += `
+        <div class="ingredient-row">
+          <span class="ingredient-name">${item.name}</span>
+          <span class="ingredient-qty">${qty} ${item.unit}</span>
+        </div>
+      `;
+    });
+    html += `</div>`;
+  });
+
+  document.getElementById('ingredients-list').innerHTML = html;
+}
+
+generatePlan();
+</script>
+</body>
+</html>
