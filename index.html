@@ -329,7 +329,7 @@
 </header>
 
 <div class="controls">
-  <button class="btn-primary" onclick="generatePlan()">🔄 新しい献立を作成</button>
+  <button class="btn-primary" onclick="generatePlan(true)">🔄 新しい献立を作成</button>
   <button class="btn-secondary" onclick="window.print()">🖨 印刷する</button>
 </div>
 
@@ -486,14 +486,42 @@ function shuffle(arr) {
   return a;
 }
 
-function generatePlan() {
-  const shuffled = shuffle(dinners);
+// 今週の月曜日の日付文字列を返す（保存キーに使用）
+function getMondayKey() {
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  return `${monday.getFullYear()}-${monday.getMonth()+1}-${monday.getDate()}`;
+}
+
+function generatePlan(forceNew = false) {
   const today = new Date();
   const dayOfWeek = today.getDay();
-  // 月曜始まりで今週の日付を生成
   const monday = new Date(today);
   monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
 
+  const storageKey = `kondate_${getMondayKey()}`;
+
+  // 今週の保存データがあれば復元する（強制再生成でない場合）
+  if (!forceNew) {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      const savedNames = JSON.parse(saved); // 料理名の配列
+      currentPlan = DAYS.map((day, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const meal = dinners.find(m => m.name === savedNames[i]) || dinners[i % dinners.length];
+        return { dayLabel: day, dayIndex: DAY_INDEX[day], date: d, dinner: meal };
+      });
+      renderWeek();
+      renderIngredients();
+      updateWeekLabel();
+      return;
+    }
+  }
+
+  // 新規生成
+  const shuffled = shuffle(dinners);
   currentPlan = DAYS.map((day, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
@@ -504,6 +532,9 @@ function generatePlan() {
       dinner: shuffled[i % shuffled.length],
     };
   });
+
+  // 今週のキーで保存（料理名の配列として保存）
+  localStorage.setItem(storageKey, JSON.stringify(currentPlan.map(d => d.dinner.name)));
 
   renderWeek();
   renderIngredients();
